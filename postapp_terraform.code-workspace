@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"[terraform]": {
+			"editor.defaultFormatter": "hashicorp.terraform"
+		},
+		"editor.formatOnSave": true,
+	},
+	"extensions": {
+		"recommendations": [
+			"hashicorp.terraform"
+		]
+	}
+}
