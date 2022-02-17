@@ -36,6 +36,7 @@ resource "aws_security_group" "db_bastion_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # SSM agentのインストールのために開けておく必要がある 
   egress {
     from_port   = 0
     to_port     = 0

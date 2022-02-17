@@ -41,13 +41,8 @@ resource "aws_lb_target_group" "backend-lb-tg" {
   health_check {
     protocol = "HTTP"
     # TODO バックエンドのヘルスチェックパス修正
-    path                = "/posts"
-    port                = 80
-    healthy_threshold   = 5
-    unhealthy_threshold = 2
-    timeout             = 5
-    interval            = 10
-    matcher             = 200
+    path = "/"
+    port = 80
   }
 }
 
@@ -74,7 +69,15 @@ resource "aws_security_group" "backend-ecs-sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["192.168.0.0/16"]
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # コンテナイメージfetchに必要 
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
@@ -88,14 +91,34 @@ resource "aws_cloudwatch_log_group" "ecs_log" {
   retention_in_days = 180
 }
 
+data "aws_iam_policy_document" "ecs-assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "backend-task-execution-role" {
+  name               = "backend-task-execution-role"
+  assume_role_policy = data.aws_iam_policy_document.ecs-assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "backend-task-role-attach" {
+  role       = aws_iam_role.backend-task-execution-role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 
 resource "aws_ecs_task_definition" "backend-app-task-definition" {
   family = "${var.project_name}-backend-task-definition"
   # Fargateで動かす
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-
-  execution_role_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  execution_role_arn       = aws_iam_role.backend-task-execution-role.arn
   # TODO リソース見直し
   cpu    = 256
   memory = 512
@@ -109,6 +132,7 @@ resource "aws_ecs_task_definition" "backend-app-task-definition" {
       "logDriver": "awslogs",
       "options": {
         "awslogs-stream-prefix": "backend",
+        "awslogs-region": "ap-northeast-1",
         "awslogs-group": "/ecs/postapp/backend"
       }
     },
@@ -137,7 +161,8 @@ resource "aws_ecs_service" "backend-app-service" {
       aws_subnet.worker_subnet_2.id,
       aws_subnet.worker_subnet_3.id,
     ]
-    security_groups = [aws_security_group.backend-ecs-sg.id]
+    security_groups  = [aws_security_group.backend-ecs-sg.id]
+    assign_public_ip = true
   }
 
   load_balancer {
