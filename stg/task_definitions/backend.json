@@ -1,0 +1,35 @@
+[
+  {
+    "image": "xxxxxxxxxx.dkr.ecr.ap-northeast-1.amazonaws.com/adachin-app-pre",
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/app",
+        "awslogs-region": "ap-northeast-1",
+        "awslogs-stream-prefix": "ecs"
+      }
+    },
+    "cpu": 512,
+    "memory": 1024,
+    "mountPoints": [],
+    "environment": [
+      {
+        "name": "RAILS_ENV",
+        "value": "pre"
+      }
+    ],
+    "networkMode": "awsvpc",
+    "name": "adachin-app",
+    "essential": true,
+    "portMappings": [
+      {
+        "hostPort": 80,
+        "containerPort": 80,
+        "protocol": "tcp"
+      }
+    ],
+    "command": [
+      "/usr/bin/supervisord"
+    ]
+  }
+]

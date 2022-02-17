@@ -36,6 +36,13 @@ resource "aws_security_group" "db_bastion_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = {
     "Name" : "db_bastion_sg"
   }
@@ -51,11 +58,10 @@ resource "aws_instance" "db_bastion_server" {
     volume_type = "gp2"
     volume_size = 8
   }
-  security_groups             = [aws_security_group.db_bastion_sg.id]
-  subnet_id                   = aws_subnet.db_bastion_subnet.id
-  iam_instance_profile        = aws_iam_instance_profile.db_bastion_instance_profile.name
-  associate_public_ip_address = false
-  disable_api_termination     = false
+  security_groups         = [aws_security_group.db_bastion_sg.id]
+  subnet_id               = aws_subnet.db_bastion_subnet.id
+  iam_instance_profile    = aws_iam_instance_profile.db_bastion_instance_profile.name
+  disable_api_termination = false
   tags = {
     Name = "db_bastion_server"
   }
@@ -67,6 +73,8 @@ sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/late
 sudo systemctl enable amazon-ssm-agent
 sudo systemctl start amazon-ssm-agent
 EOF
+
+
 }
 
 resource "aws_eip" "db_bastion_eip" {
@@ -74,9 +82,15 @@ resource "aws_eip" "db_bastion_eip" {
   tags = {
     "Name" = "db_bastion_eip"
   }
-}
 
+  lifecycle {
+    ignore_changes = all
+  }
+}
 resource "aws_eip_association" "db_bastion_eip_association" {
   instance_id   = aws_instance.db_bastion_server.id
   allocation_id = aws_eip.db_bastion_eip.id
+  lifecycle {
+    ignore_changes = all
+  }
 }
