@@ -8,6 +8,13 @@ resource "aws_security_group" "backend-alb-sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["192.168.0.0/16"]
+  }
+
   tags = {
     "Name" : "${var.project_name}-backend-alb-sg"
   }
@@ -18,7 +25,7 @@ resource "aws_lb" "backend_lb" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.backend-alb-sg.id]
   internal           = false
-  # TODO ここのサブネットの意味は？ALBが属するってこと？
+  # ルーティング対象のサブネット
   subnets = [
     aws_subnet.worker_subnet_1.id,
     aws_subnet.worker_subnet_2.id,
@@ -39,9 +46,8 @@ resource "aws_lb_target_group" "backend-lb-tg" {
   target_type = "ip"
 
   health_check {
-    protocol = "HTTP"
     # TODO バックエンドのヘルスチェックパス修正
-    path = "/"
+    path = "/api/posts/?page=1"
     port = 80
   }
 }
@@ -64,12 +70,13 @@ resource "aws_ecs_cluster" "postapp-cluster" {
 resource "aws_security_group" "backend-ecs-sg" {
   name   = "${var.project_name}-backend-ecs-sg"
   vpc_id = aws_vpc.postapp_vpc.id
-  # 同一サブネットのみアクセス可能
+  # TODO 動作確認終わり次第ALBからのみアクセス可能にする
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    # security_groups = [aws_security_group.backend-alb-sg.id]
   }
 
   # コンテナイメージfetchに必要 
@@ -114,7 +121,8 @@ resource "aws_iam_role_policy_attachment" "backend-task-role-attach" {
 
 
 resource "aws_ecs_task_definition" "backend-app-task-definition" {
-  family = "${var.project_name}-backend-task-definition"
+  family     = "${var.project_name}-backend-task-definition"
+  depends_on = [aws_db_instance.postapp-db]
   # Fargateで動かす
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -126,8 +134,8 @@ resource "aws_ecs_task_definition" "backend-app-task-definition" {
   container_definitions = <<EOL
 [
   {
-    "name": "nginx",
-    "image": "nginx:1.14",
+    "name": "${var.project_name}-backend",
+    "image": "422595392192.dkr.ecr.ap-northeast-1.amazonaws.com/postapp-backend:0.0.7",
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
@@ -136,6 +144,24 @@ resource "aws_ecs_task_definition" "backend-app-task-definition" {
         "awslogs-group": "/ecs/postapp/backend"
       }
     },
+    "environment": [
+      {
+        "name": "DB_HOST",
+        "value": "${aws_db_instance.postapp-db.endpoint}"
+      },
+      {
+        "name": "DB_USERNAME",
+        "value": "${var.db_user_username}"
+      },
+      {
+        "name": "DB_PASSWORD",
+        "value": "${var.db_user_password}"
+      },
+      {
+        "name": "JWT_SECRET",
+        "value": "${var.jwt_secret}"
+      }
+    ],
     "portMappings": [
       {
         "containerPort": 80,
@@ -148,11 +174,11 @@ EOL
 }
 
 resource "aws_ecs_service" "backend-app-service" {
-  name            = "${var.project_name}-backend-service"
-  depends_on      = [aws_lb_listener.backend_lb_listener]
-  cluster         = aws_ecs_cluster.postapp-cluster.name
+  name        = "${var.project_name}-backend-service"
+  cluster     = aws_ecs_cluster.postapp-cluster.name
+  launch_type = "FARGATE"
+
   task_definition = aws_ecs_task_definition.backend-app-task-definition.arn
-  launch_type     = "FARGATE"
   desired_count   = 2
 
   network_configuration {
@@ -167,7 +193,7 @@ resource "aws_ecs_service" "backend-app-service" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.backend-lb-tg.arn
-    container_name   = "nginx"
+    container_name   = "${var.project_name}-backend"
     container_port   = 80
   }
   # TODO AutoScaling
