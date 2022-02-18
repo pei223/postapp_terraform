@@ -72,11 +72,10 @@ resource "aws_security_group" "backend-ecs-sg" {
   vpc_id = aws_vpc.postapp_vpc.id
   # TODO 動作確認終わり次第ALBからのみアクセス可能にする
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    # security_groups = [aws_security_group.backend-alb-sg.id]
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.backend-alb-sg.id]
   }
 
   # コンテナイメージfetchに必要 
@@ -178,8 +177,9 @@ resource "aws_ecs_service" "backend-app-service" {
   cluster     = aws_ecs_cluster.postapp-cluster.name
   launch_type = "FARGATE"
 
-  task_definition = aws_ecs_task_definition.backend-app-task-definition.arn
-  desired_count   = 2
+  task_definition                   = aws_ecs_task_definition.backend-app-task-definition.arn
+  desired_count                     = 2
+  health_check_grace_period_seconds = 300
 
   network_configuration {
     subnets = [
