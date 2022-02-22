@@ -12,7 +12,8 @@
 	},
 	"extensions": {
 		"recommendations": [
-			"hashicorp.terraform"
+			"hashicorp.terraform",
+			"ms-python.vscode-pylance"
 		]
 	}
 }

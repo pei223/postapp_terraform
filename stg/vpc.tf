@@ -7,6 +7,14 @@ resource "aws_vpc" "postapp_vpc" {
   }
 }
 
+resource "aws_internet_gateway" "main_igw" {
+  vpc_id = aws_vpc.postapp_vpc.id
+  tags = {
+    "Name" : "${var.project_name}-main-igw"
+  }
+}
+
+
 resource "aws_subnet" "worker_subnet_1" {
   vpc_id            = aws_vpc.postapp_vpc.id
   availability_zone = var.AZ1
@@ -62,13 +70,6 @@ resource "aws_subnet" "rds_subnet_2" {
   }
 }
 
-resource "aws_internet_gateway" "main_igw" {
-  vpc_id = aws_vpc.postapp_vpc.id
-  tags = {
-    "Name" : "${var.project_name}-main-igw"
-  }
-}
-
 resource "aws_route_table" "default_rt" {
   vpc_id = aws_vpc.postapp_vpc.id
   route {
@@ -100,5 +101,3 @@ resource "aws_route_table_association" "default_rt_association_bastion" {
   subnet_id      = aws_subnet.db_bastion_subnet.id
   route_table_id = aws_route_table.default_rt.id
 }
-
-
