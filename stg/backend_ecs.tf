@@ -54,9 +54,8 @@ resource "aws_lb_target_group" "backend-lb-tg" {
 
 resource "aws_lb_listener" "backend_lb_listener" {
   load_balancer_arn = aws_lb.backend_lb.arn
-  # 80ポートで受け付ける
-  port     = 80
-  protocol = "HTTP"
+  port              = 80
+  protocol          = "HTTP"
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.backend-lb-tg.arn
@@ -70,7 +69,6 @@ resource "aws_ecs_cluster" "postapp-cluster" {
 resource "aws_security_group" "backend-ecs-sg" {
   name   = "${var.project_name}-backend-ecs-sg"
   vpc_id = aws_vpc.postapp_vpc.id
-  # TODO 動作確認終わり次第ALBからのみアクセス可能にする
   ingress {
     from_port       = 80
     to_port         = 80
@@ -129,7 +127,7 @@ resource "aws_ecs_task_definition" "backend-app-task-definition" {
   # TODO リソース見直し
   cpu    = 256
   memory = 512
-  # TODO 起動するコンテナ定義。とりあえずnginxにしている
+  # デプロイごとにimageのURLを変更
   container_definitions = <<EOL
 [
   {
@@ -179,6 +177,7 @@ resource "aws_ecs_service" "backend-app-service" {
 
   task_definition                   = aws_ecs_task_definition.backend-app-task-definition.arn
   desired_count                     = 2
+  # ヘルスチェック猶予時間
   health_check_grace_period_seconds = 300
 
   network_configuration {
@@ -196,6 +195,5 @@ resource "aws_ecs_service" "backend-app-service" {
     container_name   = "${var.project_name}-backend"
     container_port   = 80
   }
-  # TODO AutoScaling
 }
 

@@ -21,6 +21,7 @@ RDSエンドポイントはcreate_rds.yamlをCloudFormationで実行した後に
 createuser -d -U <db_master_username> -P -h <RDSエンドポイント> <db_user_username>
 ```
 
+
 - 最初2回は新しいユーザーのパスワード入力を求められるので、db_user_passwordの値を入力
 - その後masterのパスワードを求められるので、db_master_passwordを入力
 
@@ -35,7 +36,11 @@ createdb -U <db_user_username> -h <RDSエンドポイント> -E UTF8 postappdb
 
 ## データベースへの接続確認
 ```
-psql -U postappuser -h <RDSエンドポイント> postappdb
+psql -U <db_user_username> -h <RDSエンドポイント> postappdb
+# 全テーブル取得
+SELECT * FROM information_schema.tables;
+# 終了
+\q
 ```
 データベース接続後に必要であればテーブルセットアップ
 

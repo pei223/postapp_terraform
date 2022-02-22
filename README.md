@@ -26,13 +26,29 @@ python .\apply_about_db.py --files=vpc.tf,db_bastion.tf,rds.tf -var-file=secretv
 ## DBセットアップ
 setup_db.mdを参照
 
-## Plan
+## ECRにdocker image push
+1. ECRリポジトリ作成
+2. springboot-post-app-sampleリポジトリでdocker imageをビルド
+3. 2.のimageを1.のリポジトリにpush
+   1. ECR上にpushコマンドの説明あるのでそれに従う 
+
+## ECSのコンテナURL変更
+backend_ecs.tfのbackend-app-task-definition/container-definitions/imageのURLを変更する
+
+## ALB/ECSあたりのapply
+以下のコマンドでapplyして完了。
+### Plan
 ```
 terraform plan -var-file="secretvar.tfvars"
 ```
 
-## Apply
+### Apply
 ```
 terraform apply -var-file="secretvar.tfvars"
 ```
 
+
+## 動作確認
+- <ALBのDNS>/posts/?page=1にアクセスしてデータが返ってくることを確認
+- ALBのtarget groupのヘルスチェックを確認
+- apache benchで負荷テストしてスケーリングできることを確認
